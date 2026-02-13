@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The Big Band Theory Setlist - Viewer</title>
+    
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Poppins', sans-serif;
+            background: #0a0e27;
+            min-height: 100vh;
+            color: #e0e6f0;
+            padding: 20px;
+        }
+        .container { max-width: 1400px; margin: 0 auto; }
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+            padding: 40px 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(102, 126, 234, 0.3);
+        }
+        .header h1 {
+            font-size: 3em;
+            font-weight: 700;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+        .viewer-badge {
+            display: inline-block;
+            background: rgba(255, 255, 255, 0.2);
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 0.9em;
+            margin-top: 10px;
+        }
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+        }
+        .section {
+            background: #1a1f3a;
+            padding: 30px;
+            border-radius: 16px;
+            border: 1px solid #2a3150;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        }
+        .section h2 {
+            color: #667eea;
+            margin-bottom: 25px;
+            font-size: 1.8em;
+            font-weight: 600;
+            border-bottom: 3px solid #667eea;
+            padding-bottom: 12px;
+        }
+        .full-width { grid-column: 1 / -1; }
+        .song-item {
+            background: #0f1423;
+            padding: 18px;
+            margin-bottom: 12px;
+            border-radius: 10px;
+            border-left: 4px solid #667eea;
+            transition: all 0.3s;
+        }
+        .song-item:hover {
+            transform: translateX(5px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.2);
+        }
+        .song-title {
+            font-weight: 600;
+            color: #e0e6f0;
+            margin-bottom: 6px;
+            font-size: 1.1em;
+        }
+        .song-meta {
+            font-size: 0.9em;
+            color: #a0aac8;
+        }
+        .song-meta-extended {
+            font-size: 0.85em;
+            color: #7d87a9;
+            margin-top: 4px;
+        }
+        .link-display {
+            display: inline-block;
+            color: #667eea;
+            text-decoration: none;
+            margin-right: 12px;
+            transition: color 0.3s;
+        }
+        .link-display:hover {
+            color: #764ba2;
+            text-decoration: underline;
+        }
+        .label-item {
+            background: #0f1423;
+            padding: 20px;
+            margin-bottom: 20px;
+            border-radius: 12px;
+            border-left: 4px solid #764ba2;
+        }
+        .label-name {
+            font-weight: 600;
+            font-size: 1.3em;
+            color: #e0e6f0;
+            margin-bottom: 15px;
+        }
+        .summary-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 12px;
+            margin-top: 12px;
+        }
+        .summary-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+        }
+        .summary-value {
+            font-size: 2.2em;
+            font-weight: 700;
+            margin-bottom: 6px;
+        }
+        .summary-label {
+            font-size: 0.9em;
+            opacity: 0.95;
+        }
+        .language-breakdown {
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 2px solid #2a3150;
+        }
+        .language-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px 12px;
+            background: #1a1f3a;
+            margin-bottom: 6px;
+            border-radius: 6px;
+        }
+        .song-list-in-label {
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 2px solid #2a3150;
+        }
+        .label-song-item {
+            background: #1a1f3a;
+            padding: 12px;
+            margin-bottom: 8px;
+            border-radius: 6px;
+            border-left: 3px solid #667eea;
+        }
+        .label-song-title {
+            font-weight: 600;
+            color: #e0e6f0;
+            margin-bottom: 4px;
+        }
+        .label-song-meta {
+            font-size: 0.85em;
+            color: #a0aac8;
+        }
+        .no-data {
+            text-align: center;
+            padding: 40px;
+            color: #7d87a9;
+            font-style: italic;
+        }
+        .search-box {
+            margin-bottom: 20px;
+        }
+        .search-box input {
+            width: 100%;
+            padding: 12px 16px;
+            background: #0f1423;
+            border: 2px solid #2a3150;
+            border-radius: 8px;
+            color: #e0e6f0;
+            font-size: 15px;
+            font-family: 'Poppins', sans-serif;
+        }
+        .search-box input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        .loading {
+            text-align: center;
+            padding: 100px 20px;
+            color: #a0aac8;
+        }
+        .spinner {
+            border: 4px solid #2a3150;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 60px;
+            height: 60px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .sync-status {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: #1a1f3a;
+            padding: 12px 20px;
+            border-radius: 25px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+            display: none;
+            align-items: center;
+            gap: 12px;
+            z-index: 1000;
+            border: 2px solid #2a3150;
+        }
+        .sync-indicator {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #27ae60;
+        }
+        @media (max-width: 1000px) {
+            .main-content { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+    <div id="loading" class="loading">
+        <div class="spinner"></div>
+        <h3>Loading setlist...</h3>
+    </div>
+
+    <div id="syncStatus" class="sync-status">
+        <div class="sync-indicator"></div>
+        <span>Connected</span>
+    </div>
+
+    <div id="mainApp" style="display: none;">
+        <div class="container">
+            <div class="header">
+                <h1>🎵 The Big Band Theory Setlist</h1>
+                <p>Real-time View</p>
+                <div class="viewer-badge">👀 Viewer Mode - Read Only</div>
+            </div>
+
+            <div class="main-content">
+                <div class="section full-width">
+                    <h2>Concert Labels & Setlists</h2>
+                    <div class="search-box">
+                        <input type="text" id="searchLabels" placeholder="🔍 Search labels..." onkeyup="filterLabels()">
+                    </div>
+                    <div id="labelsContainer"></div>
+                </div>
+
+                <div class="section">
+                    <h2>Quick Stats</h2>
+                    <div id="statsContainer"></div>
+                </div>
+
+                <div class="section">
+                    <h2>All Songs</h2>
+                    <div class="search-box">
+                        <input type="text" id="searchSongs" placeholder="🔍 Search songs..." onkeyup="filterSongs()">
+                    </div>
+                    <div id="songsContainer"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const FIREBASE_CONFIG = {
+  "apiKey": "AIzaSyA2uMahzEWKXpkWkou7sQzwNB_15QWU8Pk",
+  "authDomain": "bigbandtheory-21141.firebaseapp.com",
+  "databaseURL": "https://bigbandtheory-21141-default-rtdb.asia-southeast1.firebasedatabase.app",
+  "projectId": "bigbandtheory-21141",
+  "storageBucket": "bigbandtheory-21141.firebasestorage.app",
+  "messagingSenderId": "1079197870590",
+  "appId": "1:1079197870590:web:d04c9e347ebcf5985df8af"
+};
+
+        let db, songs = [], labels = [], allSongs = [], allLabels = [];
+
+        function init() {
+            try {
+                firebase.initializeApp(FIREBASE_CONFIG);
+                db = firebase.database();
+                document.getElementById('syncStatus').style.display = 'flex';
+                setupListeners();
+            } catch (error) {
+                document.getElementById('loading').innerHTML = `
+                    <h3 style="color: #e74c3c;">Connection Error</h3>
+                    <p>${error.message}</p>
+                `;
+            }
+        }
+
+        function setupListeners() {
+            db.ref('songs').on('value', (snapshot) => {
+                const data = snapshot.val();
+                allSongs = data ? Object.keys(data).map(key => ({...data[key], id: key})) : [];
+                songs = [...allSongs];
+                renderSongs();
+                renderStats();
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('mainApp').style.display = 'block';
+            });
+
+            db.ref('labels').on('value', (snapshot) => {
+                const data = snapshot.val();
+                allLabels = data ? Object.keys(data).map(key => ({...data[key], id: key})) : [];
+                labels = [...allLabels];
+                renderLabels();
+            });
+        }
+
+        function renderSongs() {
+            const container = document.getElementById('songsContainer');
+            if (songs.length === 0) {
+                container.innerHTML = '<p class="no-data">No songs available</p>';
+                return;
+            }
+            container.innerHTML = songs.map(song => `
+                <div class="song-item">
+                    <div class="song-title">${song.title}</div>
+                    <div class="song-meta">${song.duration} min | ${song.language}</div>
+                    ${song.singer || song.key ? `<div class="song-meta-extended">
+                        ${song.singer ? `Singer: ${song.singer}` : ''}${song.singer && song.key ? ' | ' : ''}${song.key ? `Key: ${song.key}` : ''}
+                    </div>` : ''}
+                    ${song.youtube || song.chord ? `<div class="song-meta-extended">
+                        ${song.youtube ? `<a href="${song.youtube}" target="_blank" class="link-display">📺 YouTube</a>` : ''}
+                        ${song.chord ? `<a href="${song.chord}" target="_blank" class="link-display">🎸 Chords</a>` : ''}
+                    </div>` : ''}
+                </div>
+            `).join('');
+        }
+
+        function renderStats() {
+            const container = document.getElementById('statsContainer');
+            const total = allSongs.reduce((sum, s) => sum + s.duration, 0);
+            const langs = {};
+            allSongs.forEach(s => langs[s.language] = (langs[s.language] || 0) + 1);
+            
+            container.innerHTML = `
+                <div class="summary-grid">
+                    <div class="summary-card">
+                        <div class="summary-value">${allSongs.length}</div>
+                        <div class="summary-label">Total Songs</div>
+                    </div>
+                    <div class="summary-card">
+                        <div class="summary-value">${total.toFixed(0)}</div>
+                        <div class="summary-label">Total Minutes</div>
+                    </div>
+                </div>
+                <div class="language-breakdown">
+                    <h4 style="margin-bottom: 12px; color: #e0e6f0;">By Language</h4>
+                    ${Object.keys(langs).map(lang => `
+                        <div class="language-item">
+                            <span><strong>${lang}</strong></span>
+                            <span><strong>${langs[lang]} songs</strong></span>
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+        }
+
+        function renderLabels() {
+            const container = document.getElementById('labelsContainer');
+            if (labels.length === 0) {
+                container.innerHTML = '<p class="no-data">No labels yet</p>';
+                return;
+            }
+            container.innerHTML = labels.map(label => {
+                const labelSongs = allSongs.filter(s => label.songIds && label.songIds.includes(s.id));
+                const total = labelSongs.reduce((sum, s) => sum + s.duration, 0);
+                const langs = {};
+                labelSongs.forEach(s => {
+                    if (!langs[s.language]) langs[s.language] = { count: 0, duration: 0 };
+                    langs[s.language].count++;
+                    langs[s.language].duration += s.duration;
+                });
+                
+                return `
+                    <div class="label-item">
+                        <div class="label-name">${label.name}</div>
+                        <div class="summary-grid">
+                            <div class="summary-card">
+                                <div class="summary-value">${labelSongs.length}</div>
+                                <div class="summary-label">Total Songs</div>
+                            </div>
+                            <div class="summary-card">
+                                <div class="summary-value">${total.toFixed(1)}</div>
+                                <div class="summary-label">Total Minutes</div>
+                            </div>
+                        </div>
+                        <div class="language-breakdown">
+                            <h4 style="margin-bottom: 12px; color: #e0e6f0;">Duration by Language</h4>
+                            ${Object.keys(langs).map(lang => `
+                                <div class="language-item">
+                                    <span><strong>${lang}</strong> (${langs[lang].count} songs)</span>
+                                    <span><strong>${langs[lang].duration.toFixed(1)} min</strong></span>
+                                </div>
+                            `).join('')}
+                        </div>
+                        <div class="song-list-in-label">
+                            <h4 style="color: #e0e6f0; margin-bottom: 12px;">Songs (${labelSongs.length})</h4>
+                            ${labelSongs.map(song => `
+                                <div class="label-song-item">
+                                    <div class="label-song-title">${song.title}</div>
+                                    <div class="label-song-meta">${song.duration} min | ${song.language}${song.singer ? ' | ' + song.singer : ''}${song.key ? ' | ' + song.key : ''}</div>
+                                    ${song.youtube || song.chord ? `<div class="label-song-meta" style="margin-top: 4px;">
+                                        ${song.youtube ? `<a href="${song.youtube}" target="_blank" class="link-display">📺 YouTube</a>` : ''}
+                                        ${song.chord ? `<a href="${song.chord}" target="_blank" class="link-display">🎸 Chords</a>` : ''}
+                                    </div>` : ''}
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function filterSongs() {
+            const term = document.getElementById('searchSongs').value.toLowerCase();
+            songs = allSongs.filter(s => 
+                s.title.toLowerCase().includes(term) ||
+                s.language.toLowerCase().includes(term) ||
+                (s.singer && s.singer.toLowerCase().includes(term))
+            );
+            renderSongs();
+        }
+
+        function filterLabels() {
+            const term = document.getElementById('searchLabels').value.toLowerCase();
+            labels = allLabels.filter(l => l.name.toLowerCase().includes(term));
+            renderLabels();
+        }
+
+        window.onload = () => setTimeout(init, 1000);
+    </script>
+</body>
+</html>
